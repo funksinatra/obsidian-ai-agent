@@ -8,6 +8,7 @@ This module provides centralized configuration management:
 """
 
 from functools import lru_cache
+from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -29,17 +30,29 @@ class Settings(BaseSettings):
     )
 
     # Application metadata
-    app_name: str = "Obsidian Agent Project"
+    app_name: str = "Paddy"
     version: str = "0.1.0"
     environment: str = "development"
     log_level: str = "INFO"
-    api_prefix: str = "/api"
 
-    # Database
-    database_url: str
+    # LLM configuration
+    llm_provider: str = "openai"
+    llm_model: str = "gpt-4.1-nano"
+    llm_api_key: str = ""
+
+    # Vault configuration
+    obsidian_vault_path: Path = Path("/vault")
+
+    # API authentication
+    api_key: str = ""
 
     # CORS settings
-    allowed_origins: list[str] = ["http://localhost:3000", "http://localhost:8123"]
+    allowed_origins: list[str] = ["app://obsidian.md", "capacitor://localhost"]
+
+    @property
+    def model_name(self) -> str:
+        """Build provider:model string used by Pydantic AI."""
+        return f"{self.llm_provider}:{self.llm_model}"
 
 
 @lru_cache
@@ -52,9 +65,4 @@ def get_settings() -> Settings:
     Returns:
         The application settings instance.
     """
-    # pydantic-settings automatically loads required fields (like database_url)
-    # from environment variables at runtime. Mypy's static analysis doesn't understand
-    # this behavior and expects all required fields as constructor arguments. This is
-    # a known limitation of mypy with pydantic-settings. The call-arg error is suppressed
-    # as the runtime behavior is correct and type-safe.
-    return Settings()  # type: ignore[call-arg]
+    return Settings()

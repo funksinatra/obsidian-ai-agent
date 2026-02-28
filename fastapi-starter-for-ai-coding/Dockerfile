@@ -47,7 +47,7 @@ COPY . .
 ENV PATH="/app/.venv/bin:$PATH"
 
 # Expose port (adjust if your app uses a different port)
-EXPOSE 8123
+EXPOSE 8000
 
 # Run the application
 # Adjust the module/script name based on your entry point

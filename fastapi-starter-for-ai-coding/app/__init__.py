@@ -1,1 +1,1 @@
-"""Obsidian Agent Project application package."""
+"""Paddy application package."""

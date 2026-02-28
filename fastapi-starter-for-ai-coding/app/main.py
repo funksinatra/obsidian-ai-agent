@@ -5,12 +5,13 @@ This module creates and configures the FastAPI application with:
 - Structured logging setup
 - Request/response middleware
 - CORS support
-- Database connection management
+- Agent tool registration
 - Health check endpoints
 - Global exception handlers
 - Root API endpoint
 """
 
+import importlib
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -18,7 +19,6 @@ import uvicorn
 from fastapi import FastAPI
 
 from app.core.config import get_settings
-from app.core.database import engine
 from app.core.exceptions import setup_exception_handlers
 from app.core.health import router as health_router
 from app.core.logging import get_logger, setup_logging
@@ -28,15 +28,15 @@ settings = get_settings()
 
 
 @asynccontextmanager
-async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+async def lifespan(_application: FastAPI) -> AsyncIterator[None]:
     """Application lifespan event handler.
 
     Handles startup and shutdown logic:
-    - Startup: Configure logging, initialize database connection, log application start
-    - Shutdown: Dispose database connections, log application shutdown
+    - Startup: Configure logging, validate vault configuration, log application start
+    - Shutdown: Log application shutdown
 
     Args:
-        _app: The FastAPI application instance (unused, required by protocol).
+        _application: The FastAPI application instance (unused, required by protocol).
 
     Yields:
         None: Control returns to the application.
@@ -50,34 +50,34 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         version=settings.version,
         environment=settings.environment,
     )
-    logger.info("database.connection_initialized")
+    logger.info(
+        "vault.config_validated",
+        vault_path=str(settings.obsidian_vault_path),
+    )
 
     yield
 
     # Shutdown
-    await engine.dispose()
-    logger.info("database.connection_closed")
     logger.info("application.lifecycle_stopped", app_name=settings.app_name)
 
 
-# Create FastAPI application
-app = FastAPI(
+application = FastAPI(
     title=settings.app_name,
     version=settings.version,
     lifespan=lifespan,
 )
 
-# Setup middleware
-setup_middleware(app)
+setup_middleware(application)
 
-# Setup exception handlers
-setup_exception_handlers(app)
+setup_exception_handlers(application)
 
-# Include routers
-app.include_router(health_router)
+# Side-effect import: registers ping tool on vault_agent via @vault_agent.tool decorator
+importlib.import_module("app.features.ping.tools")
+
+application.include_router(health_router)
 
 
-@app.get("/")
+@application.get("/")
 def read_root() -> dict[str, str]:
     """Root endpoint providing API information.
 
@@ -100,8 +100,8 @@ if __name__ == "__main__":
     # PRODUCTION DEPLOYMENT: Always use uvicorn CLI or gunicorn with explicit
     # host configuration (e.g., --host 127.0.0.1) instead of running this file directly.
     uvicorn.run(
-        "app.main:app",
+        "app.main:application",
         host="0.0.0.0",  # noqa: S104
-        port=8123,
+        port=8000,
         reload=True,
     )

@@ -10,78 +10,52 @@ from app.core.logging import get_logger
 logger = get_logger(__name__)
 
 
-# Custom exception classes
-class DatabaseError(Exception):
-    """Base exception for database-related errors."""
-
-    pass
+class PaddyError(Exception):
+    """Base exception for Paddy application errors."""
 
 
-class NotFoundError(DatabaseError):
-    """Exception raised when a resource is not found."""
-
-    pass
+class VaultError(PaddyError):
+    """Base exception for vault-related errors."""
 
 
-class ValidationError(DatabaseError):
-    """Exception raised when validation fails."""
-
-    pass
+class NoteNotFoundError(VaultError):
+    """Exception raised when a note is not found."""
 
 
-# Global exception handlers
-async def database_exception_handler(
-    request: Request, exc: DatabaseError
-) -> JSONResponse:
-    """Handle database exceptions globally.
+class VaultPathError(VaultError):
+    """Exception raised when a vault path is invalid."""
 
-    Args:
-        request: The incoming request.
-        exc: The database exception that was raised.
 
-    Returns:
-        JSONResponse with error details.
-    """
+async def paddy_exception_handler(request: Request, exc: PaddyError) -> JSONResponse:
+    """Handle Paddy exceptions globally."""
     logger.error(
-        "database.error",
-        extra={
-            "error_type": type(exc).__name__,
-            "error_message": str(exc),
-            "path": request.url.path,
-            "method": request.method,
-        },
+        "vault.exception_raised",
+        error_type=type(exc).__name__,
+        error_message=str(exc),
+        path=request.url.path,
+        method=request.method,
         exc_info=True,
     )
 
     status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
-    if isinstance(exc, NotFoundError):
+    if isinstance(exc, NoteNotFoundError):
         status_code = status.HTTP_404_NOT_FOUND
-    elif isinstance(exc, ValidationError):
-        status_code = status.HTTP_422_UNPROCESSABLE_CONTENT
+    elif isinstance(exc, VaultPathError):
+        status_code = status.HTTP_400_BAD_REQUEST
 
     return JSONResponse(
         status_code=status_code,
-        content={
-            "error": str(exc),
-            "type": type(exc).__name__,
-        },
+        content={"error": str(exc), "type": type(exc).__name__},
     )
 
 
 def setup_exception_handlers(app: FastAPI) -> None:
-    """Register global exception handlers with the FastAPI application.
+    """Register global exception handlers with the FastAPI application."""
+    # FastAPI expects handler signatures that match the registered exception type.
+    # We intentionally reuse one polymorphic handler across related exception classes.
+    handler: Any = cast(Any, paddy_exception_handler)
 
-    Args:
-        app: The FastAPI application instance.
-    """
-    # FastAPI's type system expects exception handlers with exact type signatures
-    # matching each exception class. However, our database_exception_handler uses
-    # polymorphism to handle DatabaseError and all its subtypes (NotFoundError,
-    # ValidationError) with a single implementation. This is a valid design pattern
-    # that reduces code duplication. We use cast(Any, ...) to inform the type checker
-    # that we're intentionally using polymorphic exception handling.
-    handler: Any = cast(Any, database_exception_handler)
-
-    app.add_exception_handler(DatabaseError, handler)
-    app.add_exception_handler(NotFoundError, handler)
-    app.add_exception_handler(ValidationError, handler)
+    app.add_exception_handler(PaddyError, handler)
+    app.add_exception_handler(VaultError, handler)
+    app.add_exception_handler(NoteNotFoundError, handler)
+    app.add_exception_handler(VaultPathError, handler)

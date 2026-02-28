@@ -7,116 +7,112 @@ from fastapi import Request, status
 from fastapi.responses import JSONResponse
 
 from app.core.exceptions import (
-    DatabaseError,
-    NotFoundError,
-    ValidationError,
-    database_exception_handler,
+    NoteNotFoundError,
+    PaddyError,
+    VaultError,
+    VaultPathError,
+    paddy_exception_handler,
     setup_exception_handlers,
 )
 
 
-def test_database_error_is_exception():
-    """Test that DatabaseError is properly defined and can be raised."""
-    with pytest.raises(DatabaseError):
-        raise DatabaseError("Test error")
+def test_paddy_error_is_exception() -> None:
+    """Test that PaddyError is properly defined and can be raised."""
+    with pytest.raises(PaddyError):
+        raise PaddyError("Test error")
 
 
-def test_not_found_error_inherits_from_database_error():
-    """Test that NotFoundError inherits from DatabaseError."""
-    assert issubclass(NotFoundError, DatabaseError)
+def test_vault_error_inherits_from_paddy_error() -> None:
+    """Test that VaultError inherits from PaddyError."""
+    assert issubclass(VaultError, PaddyError)
 
-    with pytest.raises(NotFoundError):
-        raise NotFoundError("Resource not found")
+    with pytest.raises(VaultError):
+        raise VaultError("Vault error")
 
-    # Verify it can also be caught as DatabaseError
-    with pytest.raises(DatabaseError):
-        raise NotFoundError("Resource not found")
+    with pytest.raises(PaddyError):
+        raise VaultError("Vault error")
 
 
-def test_validation_error_inherits_from_database_error():
-    """Test that ValidationError inherits from DatabaseError."""
-    assert issubclass(ValidationError, DatabaseError)
+def test_note_not_found_error_inherits_from_vault_error() -> None:
+    """Test that NoteNotFoundError inherits from VaultError."""
+    assert issubclass(NoteNotFoundError, VaultError)
 
-    with pytest.raises(ValidationError):
-        raise ValidationError("Validation failed")
+    with pytest.raises(NoteNotFoundError):
+        raise NoteNotFoundError("Note not found")
 
-    # Verify it can also be caught as DatabaseError
-    with pytest.raises(DatabaseError):
-        raise ValidationError("Validation failed")
+    with pytest.raises(PaddyError):
+        raise NoteNotFoundError("Note not found")
+
+
+def test_vault_path_error_inherits_from_vault_error() -> None:
+    """Test that VaultPathError inherits from VaultError."""
+    assert issubclass(VaultPathError, VaultError)
+
+    with pytest.raises(VaultPathError):
+        raise VaultPathError("Path is invalid")
+
+    with pytest.raises(PaddyError):
+        raise VaultPathError("Path is invalid")
 
 
 @pytest.mark.asyncio
-async def test_database_exception_handler_logs_and_returns_json():
+async def test_paddy_exception_handler_logs_and_returns_json() -> None:
     """Test that the exception handler logs errors and returns proper JSON."""
-    # Create a mock request
     mock_request = MagicMock(spec=Request)
     mock_request.url.path = "/test/path"
     mock_request.method = "GET"
+    exc = PaddyError("Test paddy error")
 
-    # Create an exception
-    exc = DatabaseError("Test database error")
-
-    # Patch the logger to verify it's called
     with patch("app.core.exceptions.logger.error") as mock_logger:
-        # Call the handler
-        response = await database_exception_handler(mock_request, exc)
+        response = await paddy_exception_handler(mock_request, exc)
 
-        # Verify logger was called with exc_info=True
         mock_logger.assert_called_once()
-        call_kwargs = mock_logger.call_args[1]
+        call_kwargs = mock_logger.call_args.kwargs
         assert call_kwargs["exc_info"] is True
-        assert "error_type" in call_kwargs["extra"]
-        assert "error_message" in call_kwargs["extra"]
+        assert call_kwargs["error_type"] == "PaddyError"
+        assert call_kwargs["error_message"] == "Test paddy error"
 
-    # Verify response
     assert isinstance(response, JSONResponse)
     assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
     assert response.body is not None
 
 
 @pytest.mark.asyncio
-async def test_database_exception_handler_returns_404_for_not_found():
-    """Test that NotFoundError returns 404 status code."""
+async def test_paddy_exception_handler_returns_404_for_note_not_found() -> None:
+    """Test that NoteNotFoundError returns 404 status code."""
     mock_request = MagicMock(spec=Request)
     mock_request.url.path = "/test/path"
     mock_request.method = "GET"
-
-    exc = NotFoundError("Resource not found")
+    exc = NoteNotFoundError("Missing note")
 
     with patch("app.core.exceptions.logger.error"):
-        response = await database_exception_handler(mock_request, exc)
+        response = await paddy_exception_handler(mock_request, exc)
 
     assert response.status_code == status.HTTP_404_NOT_FOUND
 
 
 @pytest.mark.asyncio
-async def test_database_exception_handler_returns_422_for_validation():
-    """Test that ValidationError returns 422 status code."""
+async def test_paddy_exception_handler_returns_400_for_path_error() -> None:
+    """Test that VaultPathError returns 400 status code."""
     mock_request = MagicMock(spec=Request)
     mock_request.url.path = "/test/path"
     mock_request.method = "GET"
-
-    exc = ValidationError("Validation failed")
+    exc = VaultPathError("Invalid path")
 
     with patch("app.core.exceptions.logger.error"):
-        response = await database_exception_handler(mock_request, exc)
+        response = await paddy_exception_handler(mock_request, exc)
 
-    assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
 
 
-def test_setup_exception_handlers_registers_handlers():
+def test_setup_exception_handlers_registers_handlers() -> None:
     """Test that setup_exception_handlers registers all exception handlers."""
-    # Create a mock FastAPI app
     mock_app = MagicMock()
-
-    # Call setup function
     setup_exception_handlers(mock_app)
 
-    # Verify add_exception_handler was called for each exception type
-    assert mock_app.add_exception_handler.call_count == 3
-
-    # Verify the exception types that were registered
+    assert mock_app.add_exception_handler.call_count == 4
     call_args_list = [call[0][0] for call in mock_app.add_exception_handler.call_args_list]
-    assert DatabaseError in call_args_list
-    assert NotFoundError in call_args_list
-    assert ValidationError in call_args_list
+    assert PaddyError in call_args_list
+    assert VaultError in call_args_list
+    assert NoteNotFoundError in call_args_list
+    assert VaultPathError in call_args_list

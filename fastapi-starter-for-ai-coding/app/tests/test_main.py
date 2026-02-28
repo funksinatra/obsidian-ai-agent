@@ -5,13 +5,13 @@ from unittest.mock import patch
 import pytest
 from fastapi.testclient import TestClient
 
-from app.main import app
+from app.main import application
 
 
 @pytest.fixture
 def client() -> TestClient:
     """Create a test client for the FastAPI application."""
-    return TestClient(app)
+    return TestClient(application)
 
 
 def test_root_endpoint(client: TestClient) -> None:
@@ -23,7 +23,7 @@ def test_root_endpoint(client: TestClient) -> None:
     assert "message" in data
     assert "version" in data
     assert "docs" in data
-    assert data["message"] == "Obsidian Agent Project"
+    assert data["message"] == "Paddy"
     assert data["version"] == "0.1.0"
     assert data["docs"] == "/docs"
 
@@ -43,7 +43,7 @@ def test_openapi_endpoint_accessible(client: TestClient) -> None:
     data = response.json()
     assert "openapi" in data
     assert "info" in data
-    assert data["info"]["title"] == "Obsidian Agent Project"
+    assert data["info"]["title"] == "Paddy"
     assert data["info"]["version"] == "0.1.0"
 
 
@@ -52,7 +52,7 @@ def test_cors_headers_present(client: TestClient) -> None:
     # Send a request with an Origin header that should be allowed
     response = client.get(
         "/",
-        headers={"Origin": "http://localhost:3000"},
+        headers={"Origin": "app://obsidian.md"},
     )
 
     assert response.status_code == 200
@@ -85,11 +85,11 @@ def test_lifespan_startup_logging() -> None:
         mock_logger = mock_get_logger.return_value
 
         # Create a new client to trigger lifespan
-        with TestClient(app):
+        with TestClient(application):
             # Check that logger.info was called with application.lifecycle_started
             mock_logger.info.assert_any_call(
                 "application.lifecycle_started",
-                app_name="Obsidian Agent Project",
+                app_name="Paddy",
                 version="0.1.0",
                 environment="development",
             )

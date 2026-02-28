@@ -1,6 +1,7 @@
 """Tests for app.core.config module."""
 
 import os
+from pathlib import Path
 from unittest.mock import patch
 
 from app.core.config import Settings, get_settings
@@ -17,27 +18,32 @@ def create_settings() -> Settings:
     Returns:
         Settings instance loaded from environment variables.
     """
-    return Settings()  # type: ignore[call-arg]
+    return Settings()
 
 
 def test_settings_defaults() -> None:
-    """Test Settings instantiation with default values."""
-    with patch.dict(
-        os.environ,
-        {
-            "DATABASE_URL": "postgresql+asyncpg://test:test@localhost:5432/test",
-            "LOG_LEVEL": "INFO",  # Override .env file to test default value
-        },
-    ):
+    """Test Settings instantiation with default values.
+
+    We explicitly override env vars that may come from .env to verify
+    that the Settings class declares correct defaults.
+    """
+    env_overrides = {
+        "LOG_LEVEL": "INFO",
+        "OBSIDIAN_VAULT_PATH": "/vault",
+        "LLM_API_KEY": "",
+        "API_KEY": "",
+    }
+    with patch.dict(os.environ, env_overrides, clear=False):
         settings = create_settings()
 
-        assert settings.app_name == "Obsidian Agent Project"
+        assert settings.app_name == "Paddy"
         assert settings.version == "0.1.0"
         assert settings.environment == "development"
         assert settings.log_level == "INFO"
-        assert settings.api_prefix == "/api"
-        assert "http://localhost:3000" in settings.allowed_origins
-        assert "http://localhost:8123" in settings.allowed_origins
+        assert settings.llm_provider == "openai"
+        assert settings.obsidian_vault_path == Path("/vault")
+        assert "app://obsidian.md" in settings.allowed_origins
+        assert "capacitor://localhost" in settings.allowed_origins
 
 
 def test_settings_from_environment() -> None:
@@ -49,8 +55,9 @@ def test_settings_from_environment() -> None:
             "VERSION": "1.0.0",
             "ENVIRONMENT": "production",
             "LOG_LEVEL": "DEBUG",
-            "API_PREFIX": "/v1",
-            "DATABASE_URL": "postgresql+asyncpg://test:test@localhost:5432/test",
+            "LLM_PROVIDER": "anthropic",
+            "LLM_MODEL": "claude-3-5-sonnet-latest",
+            "OBSIDIAN_VAULT_PATH": "/Users/test-vault",
         },
     ):
         settings = create_settings()
@@ -59,7 +66,16 @@ def test_settings_from_environment() -> None:
         assert settings.version == "1.0.0"
         assert settings.environment == "production"
         assert settings.log_level == "DEBUG"
-        assert settings.api_prefix == "/v1"
+        assert settings.llm_provider == "anthropic"
+        assert settings.llm_model == "claude-3-5-sonnet-latest"
+        assert settings.obsidian_vault_path == Path("/Users/test-vault")
+
+
+def test_model_name_property() -> None:
+    """Test model_name builds provider:model value."""
+    with patch.dict(os.environ, {"LLM_PROVIDER": "openai", "LLM_MODEL": "gpt-4.1-nano"}):
+        settings = create_settings()
+        assert settings.model_name == "openai:gpt-4.1-nano"
 
 
 def test_allowed_origins_parsing() -> None:
@@ -70,15 +86,14 @@ def test_allowed_origins_parsing() -> None:
     with patch.dict(
         os.environ,
         {
-            "ALLOWED_ORIGINS": '["http://example.com","http://localhost:3000","http://test.com"]',
-            "DATABASE_URL": "postgresql+asyncpg://test:test@localhost:5432/test",
+            "ALLOWED_ORIGINS": '["app://obsidian.md","capacitor://localhost","http://test.com"]',
         },
     ):
         settings = create_settings()
 
         assert len(settings.allowed_origins) == 3
-        assert "http://example.com" in settings.allowed_origins
-        assert "http://localhost:3000" in settings.allowed_origins
+        assert "app://obsidian.md" in settings.allowed_origins
+        assert "capacitor://localhost" in settings.allowed_origins
         assert "http://test.com" in settings.allowed_origins
 
 
@@ -101,10 +116,11 @@ def test_settings_case_insensitive() -> None:
         {
             "app_name": "Lower Case App",
             "ENVIRONMENT": "PRODUCTION",
-            "DATABASE_URL": "postgresql+asyncpg://test:test@localhost:5432/test",
+            "llm_provider": "google-gla",
         },
     ):
         settings = create_settings()
 
         assert settings.app_name == "Lower Case App"
         assert settings.environment == "PRODUCTION"
+        assert settings.llm_provider == "google-gla"

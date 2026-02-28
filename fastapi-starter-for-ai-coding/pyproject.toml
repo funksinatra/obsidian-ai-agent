@@ -5,12 +5,10 @@ description = "FastAPI + PostgreSQL starter with vertical slice architecture, op
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "alembic>=1.17.1",
-    "asyncpg>=0.30.0",
     "fastapi>=0.120.1",
+    "pydantic-ai-slim[openai]",
     "pydantic-settings>=2.11.0",
     "python-dotenv>=1.2.1",
-    "sqlalchemy[asyncio]>=2.0.44",
     "structlog>=25.5.0",
     "uvicorn[standard]>=0.38.0",
 ]
@@ -65,7 +63,6 @@ ignore = [
 "**/tests/**/*.py" = ["S101", "ANN", "ARG001", "D", "E731"]  # Also apply to nested test directories
 "__init__.py" = ["F401"]  # Allow unused imports in package init
 "scripts/**/*.py" = ["T201"]  # Allow print in scripts
-"app/core/health.py" = ["B008"]  # FastAPI Depends() in defaults is the recommended pattern
 
 [tool.ruff.format]
 quote-style = "double"
@@ -93,7 +90,7 @@ module = "*.tests.*"
 disallow_untyped_defs = false
 
 [[tool.mypy.overrides]]
-module = "test_*"
+module = "app.*.tests.*"
 disallow_untyped_defs = false
 
 [tool.pytest.ini_options]
@@ -104,6 +101,8 @@ markers = [
 ]
 
 [tool.pyright]
+venvPath = "."
+venv = ".venv"
 include = ["app"]
 exclude = [
     "**/__pycache__",
