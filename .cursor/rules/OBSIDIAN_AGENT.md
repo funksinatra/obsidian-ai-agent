@@ -75,7 +75,7 @@ tests/
 
 ```python
 # core/agent.py — define agent once
-vault_agent = Agent('anthropic:claude-sonnet-4-0', deps_type=VaultDependencies)
+vault_agent = Agent('openai:gpt-4.1-nano', deps_type=VaultDependencies)
 
 # features/vault_query/tools.py — register tool via decorator
 from app.core.agent import vault_agent
@@ -335,15 +335,15 @@ Converts between OpenAI chat completion format and Pydantic AI's internal format
 
 ```bash
 # LLM
-LLM_PROVIDER=anthropic              # anthropic | openai | google | ollama
-LLM_MODEL=claude-sonnet-4-0
-LLM_API_KEY=sk-...
+LLM_PROVIDER=openai                 # anthropic | openai | google | ollama
+LLM_MODEL=gpt-4.1-nano
+LLM_API_KEY=sk-proj-...             # Provider key (OpenAI in this setup)
 
 # Vault
 OBSIDIAN_VAULT_PATH=/Users/name/Documents/MyVault   # host path
 
 # API
-API_KEY=your-secret-api-key
+API_KEY=your-secret-api-key         # App auth token for Authorization: Bearer <API_KEY>
 API_HOST=0.0.0.0
 API_PORT=8000
 

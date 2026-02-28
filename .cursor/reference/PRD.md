@@ -152,7 +152,7 @@ project-root/
 **2. Tool Registration Flow**
 ```python
 # core/agent.py - Define agent
-vault_agent = Agent('anthropic:claude-sonnet-4-0', deps_type=VaultDependencies)
+vault_agent = Agent('openai:gpt-4.1-nano', deps_type=VaultDependencies)
 
 # features/vault_query/tools.py - Register tools
 from core.agent import vault_agent
@@ -295,16 +295,16 @@ docker run -v ${OBSIDIAN_VAULT_PATH}:/vault:rw \
 **Environment Variables (`.env`):**
 ```bash
 # LLM Provider Configuration
-LLM_PROVIDER=anthropic              # anthropic | openai | google | ollama
-LLM_MODEL=claude-sonnet-4-0         # Model identifier
-LLM_API_KEY=sk-...                  # Provider API key
+LLM_PROVIDER=openai                 # anthropic | openai | google | ollama
+LLM_MODEL=gpt-4.1-nano              # Model identifier
+LLM_API_KEY=sk-proj-...             # Provider API key (OpenAI in this setup)
 
 # Vault Configuration
 OBSIDIAN_VAULT_PATH=/Users/name/Documents/MyVault  # Absolute path to vault on host
 # Inside container, this becomes /vault via volume mount
 
 # API Configuration
-API_KEY=your-secret-api-key         # For Obsidian Copilot authentication
+API_KEY=your-secret-api-key         # App auth token for Obsidian Copilot (Bearer token)
 API_HOST=0.0.0.0                    # Host to bind (default: 0.0.0.0)
 API_PORT=8000                       # Port to bind (default: 8000)
 

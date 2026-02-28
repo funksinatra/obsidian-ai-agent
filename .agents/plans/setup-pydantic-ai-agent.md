@@ -88,7 +88,7 @@ Adapt the starter in-place: delete database files, rewrite config for LLM/vault,
 **Agent/Tool Registration** (from `.cursor/rules/OBSIDIAN_AGENT.md` lines 76-89):
 ```python
 # core/agent.py — define agent once
-vault_agent = Agent('anthropic:claude-sonnet-4-0', deps_type=VaultDependencies)
+vault_agent = Agent('openai:gpt-4.1-nano', deps_type=VaultDependencies)
 
 # features/*/tools.py — register tool via decorator
 @vault_agent.tool
@@ -141,8 +141,8 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
 
     # LLM configuration
-    llm_provider: str = "anthropic"
-    llm_model: str = "claude-sonnet-4-0"
+    llm_provider: str = "openai"
+    llm_model: str = "gpt-4.1-nano"
     llm_api_key: str = ""
 
     # Vault configuration
@@ -156,7 +156,7 @@ class Settings(BaseSettings):
 
     @property
     def model_name(self) -> str:
-        """Build full model string for Pydantic AI (e.g. 'anthropic:claude-sonnet-4-0')."""
+        """Build full model string for Pydantic AI (e.g. 'openai:gpt-4.1-nano')."""
         return f"{self.llm_provider}:{self.llm_model}"
 ```
 
@@ -175,9 +175,9 @@ ENVIRONMENT=development
 LOG_LEVEL=INFO
 
 # LLM
-LLM_PROVIDER=anthropic
-LLM_MODEL=claude-sonnet-4-0
-LLM_API_KEY=sk-ant-...
+LLM_PROVIDER=openai
+LLM_MODEL=gpt-4.1-nano
+LLM_API_KEY=sk-proj-...
 
 # Vault
 OBSIDIAN_VAULT_PATH=/Users/yourname/Documents/MyVault
@@ -333,9 +333,9 @@ async def ping(ctx: RunContext[VaultDependencies]) -> str:
 Rewrite all tests for new settings fields. Remove all `DATABASE_URL` references.
 
 **Tests to implement:**
-- `test_settings_defaults` — `app_name="Paddy"`, `llm_provider="anthropic"`, `obsidian_vault_path=Path("/vault")`
+- `test_settings_defaults` — `app_name="Paddy"`, `llm_provider="openai"`, `obsidian_vault_path=Path("/vault")`
 - `test_settings_from_environment` — override `LLM_PROVIDER`, `LLM_MODEL`, `OBSIDIAN_VAULT_PATH`
-- `test_model_name_property` — returns `"anthropic:claude-sonnet-4-0"`
+- `test_model_name_property` — returns `"openai:gpt-4.1-nano"`
 - `test_allowed_origins_parsing` — update expected to `"app://obsidian.md"`
 - `test_get_settings_caching` — keep as-is
 - `test_settings_case_insensitive` — update env vars to new fields
